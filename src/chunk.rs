@@ -4,7 +4,7 @@ use std::fmt::Debug;
 pub struct Chunk {
     code: Vec<u8>,
     constants: Vec<Value>,
-    lines: Vec<usize>,
+    lines: Vec<(usize, usize)>,
     name: String,
 }
 
@@ -20,9 +20,18 @@ impl Chunk {
 
     pub fn write<O: Into<Vec<u8>> + Copy>(&mut self, value: O, line: usize) {
         self.code.extend_from_slice(&value.into());
+        self.add_line(line);
+    }
 
-        for _ in 0..value.into().len() {
-            self.lines.push(line);
+    fn add_line(&mut self, line: usize) {
+        if self.lines.is_empty() {
+            self.lines.push((line, self.code.len() - 1));
+        } else {
+            let last_line = self.lines.last().unwrap().0;
+            if last_line == line {
+                return;
+            }
+            self.lines.push((line, self.code.len() - 1));
         }
     }
 
@@ -38,11 +47,7 @@ impl Chunk {
     ) -> std::fmt::Result {
         write!(f, "{:04} ", offset)?;
 
-        if *offset > 0 && self.lines[*offset] == self.lines[*offset - 1] {
-            write!(f, "   | ")?;
-        } else {
-            write!(f, "{:4} ", self.lines[*offset])?;
-        }
+        self.write_line_info(*offset, f)?;
 
         let opcode = self.code[*offset];
         *offset += 1;
@@ -56,6 +61,18 @@ impl Chunk {
             }
         }
 
+        Ok(())
+    }
+
+    fn write_line_info(&self, offset: usize, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if offset == 0 {
+            let first_line = self.lines.first().unwrap().0;
+            write!(f, "{:4} ", first_line)?;
+        } else if let Some((line, _start)) = self.lines.iter().find(|(_, start)| *start == offset) {
+            write!(f, "{:4} ", line)?;
+        } else {
+            write!(f, "   | ")?;
+        }
         Ok(())
     }
 
