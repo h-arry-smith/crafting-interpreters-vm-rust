@@ -4,6 +4,7 @@ use opcode::Opcode;
 use crate::value::Value;
 
 mod chunk;
+mod dissasembler;
 mod opcode;
 mod value;
 

@@ -1,11 +1,11 @@
-use crate::{opcode::Opcode, value::Value};
+use crate::{dissasembler::Dissasembler, opcode::Opcode, value::Value};
 use std::fmt::Debug;
 
 pub struct Chunk {
-    code: Vec<u8>,
-    constants: Vec<Value>,
-    lines: Vec<(usize, usize)>,
-    name: String,
+    pub code: Vec<u8>,
+    pub constants: Vec<Value>,
+    pub lines: Vec<(usize, usize)>,
+    pub name: String,
 }
 
 impl Chunk {
@@ -23,6 +23,7 @@ impl Chunk {
         self.add_line(line);
     }
 
+    // NOTE: In the book it asks to support 24bit constants, but why not 32bit :^)
     pub fn write_constant(&mut self, constant: u32, line: usize) {
         if constant < 256 {
             self.write(Opcode::Constant, line);
@@ -49,99 +50,11 @@ impl Chunk {
         self.constants.push(value);
         self.constants.len() - 1
     }
-
-    fn disassemble_instruction(
-        &self,
-        offset: &mut usize,
-        f: &mut std::fmt::Formatter<'_>,
-    ) -> std::fmt::Result {
-        write!(f, "{:04} ", offset)?;
-
-        self.write_line_info(*offset, f)?;
-
-        let opcode = self.code[*offset];
-        *offset += 1;
-
-        match opcode.into() {
-            Opcode::Return => {
-                self.disassemble_simple_instruction(offset, "Return", f)?;
-            }
-            Opcode::Constant => {
-                self.dissassemble_constant_instruction(offset, "Constant", f)?;
-            }
-            Opcode::ConstantLong => {
-                self.dissassemble_constant_long_instruction(offset, "ConstantLong", f)?;
-            }
-        }
-
-        Ok(())
-    }
-
-    fn write_line_info(&self, offset: usize, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if offset == 0 {
-            let first_line = self.lines.first().unwrap().0;
-            write!(f, "{:4} ", first_line)?;
-        } else if let Some((line, _start)) = self.lines.iter().find(|(_, start)| *start == offset) {
-            write!(f, "{:4} ", line)?;
-        } else {
-            write!(f, "   | ")?;
-        }
-        Ok(())
-    }
-
-    fn disassemble_simple_instruction(
-        &self,
-        offset: &mut usize,
-        name: &str,
-        f: &mut std::fmt::Formatter<'_>,
-    ) -> std::fmt::Result {
-        *offset += 1;
-        writeln!(f, "{}", name)
-    }
-
-    fn dissassemble_constant_instruction(
-        &self,
-        offset: &mut usize,
-        name: &str,
-        f: &mut std::fmt::Formatter<'_>,
-    ) -> std::fmt::Result {
-        let constant = self.code[*offset];
-        *offset += 1;
-        writeln!(
-            f,
-            "{:<16} {:4} '{}'",
-            name, constant, self.constants[constant as usize]
-        )
-    }
-
-    fn dissassemble_constant_long_instruction(
-        &self,
-        offset: &mut usize,
-        name: &str,
-        f: &mut std::fmt::Formatter<'_>,
-    ) -> std::fmt::Result {
-        let constant = u32::from_be_bytes([
-            self.code[*offset],
-            self.code[*offset + 1],
-            self.code[*offset + 2],
-            self.code[*offset + 3],
-        ]);
-        *offset += 4;
-        writeln!(
-            f,
-            "{:<16} {:4} '{}'",
-            name, constant, self.constants[constant as usize]
-        )
-    }
 }
 
 impl Debug for Chunk {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "== {} ==", self.name)?;
-        let mut offset = 0;
-        while offset < self.code.len() {
-            self.disassemble_instruction(&mut offset, f)?;
-        }
+        Dissasembler::disassemble(self, f)?;
         Ok(())
     }
 }
