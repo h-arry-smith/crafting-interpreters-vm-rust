@@ -3,6 +3,7 @@
 pub enum Opcode {
     Return,
     Constant,
+    ConstantLong,
 }
 
 impl From<u8> for Opcode {
@@ -10,6 +11,7 @@ impl From<u8> for Opcode {
         match byte {
             0 => Opcode::Return,
             1 => Opcode::Constant,
+            2 => Opcode::ConstantLong,
             _ => panic!("Unknown opcode {}", byte),
         }
     }

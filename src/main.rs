@@ -10,9 +10,12 @@ mod value;
 fn main() {
     let mut chunk = Chunk::new("test chunk".into());
 
-    let constant = chunk.add_constant(Value(1.2));
-    chunk.write(Opcode::Constant, 123);
-    chunk.write(u8::to_be_bytes(constant as u8), 123);
+    let mut constant = 0;
+    for x in 0..100_000 {
+        constant = chunk.add_constant(Value(x as f64));
+    }
+
+    chunk.write_constant(constant as u32, 122);
 
     chunk.write(Opcode::Return, 123);
 

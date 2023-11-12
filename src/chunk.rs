@@ -18,9 +18,19 @@ impl Chunk {
         }
     }
 
-    pub fn write<O: Into<Vec<u8>> + Copy>(&mut self, value: O, line: usize) {
+    pub fn write<O: Into<Vec<u8>>>(&mut self, value: O, line: usize) {
         self.code.extend_from_slice(&value.into());
         self.add_line(line);
+    }
+
+    pub fn write_constant(&mut self, constant: u32, line: usize) {
+        if constant < 256 {
+            self.write(Opcode::Constant, line);
+            self.write([constant as u8], line);
+        } else {
+            self.write(Opcode::ConstantLong, line);
+            self.write(constant.to_be_bytes(), line);
+        }
     }
 
     fn add_line(&mut self, line: usize) {
@@ -54,10 +64,13 @@ impl Chunk {
 
         match opcode.into() {
             Opcode::Return => {
-                self.disassemble_simple_instruction(offset, "OP_RETURN", f)?;
+                self.disassemble_simple_instruction(offset, "Return", f)?;
             }
             Opcode::Constant => {
-                self.dissassemble_constant_instruction(offset, "OP_CONSTANT", f)?;
+                self.dissassemble_constant_instruction(offset, "Constant", f)?;
+            }
+            Opcode::ConstantLong => {
+                self.dissassemble_constant_long_instruction(offset, "ConstantLong", f)?;
             }
         }
 
@@ -94,6 +107,26 @@ impl Chunk {
     ) -> std::fmt::Result {
         let constant = self.code[*offset];
         *offset += 1;
+        writeln!(
+            f,
+            "{:<16} {:4} '{}'",
+            name, constant, self.constants[constant as usize]
+        )
+    }
+
+    fn dissassemble_constant_long_instruction(
+        &self,
+        offset: &mut usize,
+        name: &str,
+        f: &mut std::fmt::Formatter<'_>,
+    ) -> std::fmt::Result {
+        let constant = u32::from_be_bytes([
+            self.code[*offset],
+            self.code[*offset + 1],
+            self.code[*offset + 2],
+            self.code[*offset + 3],
+        ]);
+        *offset += 4;
         writeln!(
             f,
             "{:<16} {:4} '{}'",
