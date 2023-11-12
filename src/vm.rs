@@ -1,6 +1,8 @@
 use std::{error::Error, fmt::Display};
 
-use crate::{chunk::Chunk, dissasembler::Dissasembler, opcode::Opcode, value::Value};
+use crate::{
+    chunk::Chunk, compiler::Compiler, dissasembler::Dissasembler, opcode::Opcode, value::Value,
+};
 
 const STACK_MAX: usize = 256;
 
@@ -15,8 +17,8 @@ macro_rules! binary_op {
     }
 }
 
-pub struct Vm<'c> {
-    chunk: &'c Chunk,
+pub struct Vm {
+    chunk: Option<Chunk>,
     ip: usize,
     stack: [Value; STACK_MAX],
     stack_top: usize,
@@ -24,23 +26,22 @@ pub struct Vm<'c> {
 
 type InterpretResult = Result<(), InterpretError>;
 
-impl<'c> Vm<'c> {
-    pub fn new(chunk: &'c Chunk) -> Self {
+impl Vm {
+    pub fn new() -> Self {
         Vm {
-            chunk,
+            chunk: None,
             ip: 0,
             stack: [Value(0.0); STACK_MAX],
             stack_top: 0,
         }
     }
 
-    pub fn interpret(&mut self, chunk: Option<&'c Chunk>) -> InterpretResult {
-        if let Some(chunk) = chunk {
-            self.chunk = chunk;
-            self.ip = 0;
-        }
+    pub fn interpret(&mut self, source: &str) -> InterpretResult {
+        self.ip = 0;
+        let chunk = Compiler::compile(source)?;
+        self.chunk = Some(chunk);
 
-        self.run()?;
+        // self.run()?;
 
         Ok(())
     }
@@ -56,7 +57,7 @@ impl<'c> Vm<'c> {
 
                 // NOTE: Cloning the IP pointer here prevents the disassembler from moving the offset
                 //       forward, which would cause the VM to skip instructions.
-                Dissasembler::trace_instruction(self.chunk, &mut self.ip.clone());
+                Dissasembler::trace_instruction(self.chunk.as_ref().unwrap(), &mut self.ip.clone());
             }
 
             let opcode = self.read_opcode()?;
@@ -81,22 +82,22 @@ impl<'c> Vm<'c> {
                 _ => return Err(InterpretError::CompileError),
             }
 
-            if self.ip >= self.chunk.code.len() {
+            if self.ip >= self.chunk.as_ref().unwrap().code.len() {
                 return Ok(());
             }
         }
     }
 
     fn read_opcode(&mut self) -> Result<Opcode, InterpretError> {
-        let opcode = self.chunk.code[self.ip];
+        let opcode = self.chunk.as_ref().unwrap().code[self.ip];
         self.ip += 1;
         Ok(opcode.into())
     }
 
     fn read_constant(&mut self) -> Result<&Value, InterpretError> {
-        let constant = self.chunk.code[self.ip];
+        let constant = (self.chunk.as_ref().unwrap()).code[self.ip];
         self.ip += 1;
-        Ok(&self.chunk.constants[constant as usize])
+        Ok(&self.chunk.as_ref().unwrap().constants[constant as usize])
     }
 
     fn push(&mut self, value: Value) {
