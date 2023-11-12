@@ -1,10 +1,12 @@
+use std::fmt::Write;
+
 use crate::chunk::Chunk;
 use crate::Opcode;
 
 pub struct Dissasembler {}
 
 impl Dissasembler {
-    pub fn disassemble(chunk: &Chunk, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    pub fn disassemble<W: Write>(chunk: &Chunk, f: &mut W) -> std::fmt::Result {
         println!("== {} ==", chunk.name);
 
         let mut offset = 0;
@@ -15,10 +17,10 @@ impl Dissasembler {
         Ok(())
     }
 
-    fn disassemble_instruction(
+    pub fn disassemble_instruction<W: Write>(
         chunk: &Chunk,
         offset: &mut usize,
-        f: &mut std::fmt::Formatter<'_>,
+        f: &mut W,
     ) -> std::fmt::Result {
         write!(f, "{:04} ", offset)?;
 
@@ -29,7 +31,7 @@ impl Dissasembler {
 
         match opcode.into() {
             Opcode::Return => {
-                Self::disassemble_simple_instruction(offset, "Return", f)?;
+                Self::disassemble_simple_instruction("Return", f)?;
             }
             Opcode::Constant => {
                 Self::dissassemble_constant_instruction(chunk, offset, "Constant", f)?;
@@ -37,16 +39,34 @@ impl Dissasembler {
             Opcode::ConstantLong => {
                 Self::dissassemble_constant_long_instruction(chunk, offset, "ConstantLong", f)?;
             }
+            Opcode::Negate => {
+                Self::disassemble_simple_instruction("Negate", f)?;
+            }
+            Opcode::Add => {
+                Self::disassemble_simple_instruction("Add", f)?;
+            }
+            Opcode::Subtract => {
+                Self::disassemble_simple_instruction("Subtract", f)?;
+            }
+            Opcode::Divide => {
+                Self::disassemble_simple_instruction("Divide", f)?;
+            }
+            Opcode::Multiply => {
+                Self::disassemble_simple_instruction("Multiply", f)?;
+            }
         }
 
         Ok(())
     }
 
-    fn write_line_info(
-        chunk: &Chunk,
-        offset: usize,
-        f: &mut std::fmt::Formatter<'_>,
-    ) -> std::fmt::Result {
+    pub fn trace_instruction(chunk: &Chunk, offset: &mut usize) {
+        let mut output = String::new();
+        Self::disassemble_instruction(chunk, offset, &mut output)
+            .expect("Could not trace instruction");
+        print!("{}", output);
+    }
+
+    fn write_line_info<W: Write>(chunk: &Chunk, offset: usize, f: &mut W) -> std::fmt::Result {
         if offset == 0 {
             let first_line = chunk.lines.first().unwrap().0;
             write!(f, "{:4} ", first_line)?;
@@ -59,20 +79,15 @@ impl Dissasembler {
         Ok(())
     }
 
-    fn disassemble_simple_instruction(
-        offset: &mut usize,
-        name: &str,
-        f: &mut std::fmt::Formatter<'_>,
-    ) -> std::fmt::Result {
-        *offset += 1;
+    fn disassemble_simple_instruction<W: Write>(name: &str, f: &mut W) -> std::fmt::Result {
         writeln!(f, "{}", name)
     }
 
-    fn dissassemble_constant_instruction(
+    fn dissassemble_constant_instruction<W: Write>(
         chunk: &Chunk,
         offset: &mut usize,
         name: &str,
-        f: &mut std::fmt::Formatter<'_>,
+        f: &mut W,
     ) -> std::fmt::Result {
         let constant = chunk.code[*offset];
         *offset += 1;
@@ -83,11 +98,11 @@ impl Dissasembler {
         )
     }
 
-    fn dissassemble_constant_long_instruction(
+    fn dissassemble_constant_long_instruction<W: Write>(
         chunk: &Chunk,
         offset: &mut usize,
         name: &str,
-        f: &mut std::fmt::Formatter<'_>,
+        f: &mut W,
     ) -> std::fmt::Result {
         let constant = u32::from_be_bytes([
             chunk.code[*offset],

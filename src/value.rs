@@ -1,5 +1,6 @@
 use std::fmt::Display;
 
+#[derive(Debug, Clone, Copy)]
 pub struct Value(pub f64);
 
 impl Display for Value {
