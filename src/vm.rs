@@ -38,7 +38,8 @@ impl Vm {
 
     pub fn interpret(&mut self, source: &str) -> InterpretResult {
         self.ip = 0;
-        let chunk = Compiler::compile(source)?;
+        let mut compiler = Compiler::new(source);
+        let chunk = compiler.compile()?;
         self.chunk = Some(chunk);
 
         // self.run()?;

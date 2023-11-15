@@ -228,6 +228,7 @@ impl<'src> Scanner<'src> {
     }
 }
 
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub struct Token {
     pub token_type: TokenType,
     pub start: usize,
@@ -244,9 +245,13 @@ impl Token {
             line,
         }
     }
+
+    pub fn lexeme<'a>(&self, source: &'a str) -> &'a str {
+        &source[self.start..self.start + self.length]
+    }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub enum TokenType {
     // Single-character tokens.
     LeftParen,
@@ -296,6 +301,6 @@ pub enum TokenType {
 }
 
 pub struct CompilerError {
-    line: usize,
-    message: String,
+    pub line: usize,
+    pub message: String,
 }
