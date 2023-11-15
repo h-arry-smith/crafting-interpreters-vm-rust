@@ -1,6 +1,5 @@
 use crate::{
     chunk::Chunk,
-    dissasembler::Dissasembler,
     opcode::Opcode,
     scanner::{CompilerError, Scanner, Token, TokenType},
     value::Value,
@@ -69,7 +68,8 @@ impl<'src> Compiler<'src> {
     }
 
     fn emit_constant(&mut self, constant: u32) {
-        self.emit_pair((Opcode::Constant, constant as u8));
+        let line = self.parser.previous.line;
+        self.current_chunk().write_constant(constant, line)
     }
 
     fn current_chunk(&mut self) -> &mut Chunk {
