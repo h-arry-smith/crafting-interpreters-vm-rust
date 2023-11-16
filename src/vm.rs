@@ -7,11 +7,16 @@ use crate::{
 const STACK_MAX: usize = 256;
 
 macro_rules! binary_op {
-    ($self:ident, $op:tt) => {
+    ($self:ident, $op:tt, $value_type:ident) => {
         {
+            if !$self.peek(0).is_number() || !$self.peek(1).is_number() {
+                $self.runtime_error("Operands must be numbers");
+                return Err(InterpretError::RuntimeError);
+            }
+
             let b = *$self.pop();
             let a = *$self.pop();
-            let result = Value(a.0 $op b.0);
+            let result = Value::$value_type(a.as_f64().unwrap() $op b.as_f64().unwrap());
             $self.push(result);
         }
     }
@@ -31,7 +36,7 @@ impl Vm {
         Vm {
             chunk: None,
             ip: 0,
-            stack: [Value(0.0); STACK_MAX],
+            stack: [Value::Number(0.0); STACK_MAX],
             stack_top: 0,
         }
     }
@@ -42,7 +47,7 @@ impl Vm {
         let chunk = compiler.compile()?;
         self.chunk = Some(chunk);
 
-        // self.run()?;
+        self.run()?;
 
         Ok(())
     }
@@ -72,14 +77,40 @@ impl Vm {
                     let constant = *self.read_constant()?;
                     self.push(constant);
                 }
+                Opcode::Nil => {
+                    self.push(Value::Nil);
+                }
+                Opcode::True => {
+                    self.push(Value::Bool(true));
+                }
+                Opcode::False => {
+                    self.push(Value::Bool(false));
+                }
+                Opcode::Equal => {
+                    let b = *self.pop();
+                    let a = *self.pop();
+                    let result = Value::Bool(a == b);
+                    self.push(result);
+                }
+                Opcode::Greater => binary_op!(self, >, Bool),
+                Opcode::Less => binary_op!(self, <, Bool),
                 Opcode::Negate => {
-                    let negated_value = Value(-(self.pop().0));
+                    if !self.peek(0).is_number() {
+                        self.runtime_error("Operand must be a number");
+                        return Err(InterpretError::RuntimeError);
+                    }
+
+                    let negated_value = Value::Number(-(self.pop().as_f64().unwrap()));
                     self.push(negated_value);
                 }
-                Opcode::Add => binary_op!(self, +),
-                Opcode::Subtract => binary_op!(self, -),
-                Opcode::Divide => binary_op!(self, /),
-                Opcode::Multiply => binary_op!(self, *),
+                Opcode::Add => binary_op!(self, +, Number),
+                Opcode::Subtract => binary_op!(self, -, Number),
+                Opcode::Divide => binary_op!(self, /, Number),
+                Opcode::Multiply => binary_op!(self, *, Number),
+                Opcode::Not => {
+                    let result = Value::Bool(self.pop().is_falsey());
+                    self.push(result);
+                }
                 _ => return Err(InterpretError::CompileError),
             }
 
@@ -109,6 +140,20 @@ impl Vm {
     fn pop(&mut self) -> &Value {
         self.stack_top -= 1;
         &self.stack[self.stack_top]
+    }
+
+    fn peek(&self, distance: usize) -> &Value {
+        &self.stack[self.stack_top - 1 - distance]
+    }
+
+    fn reset_stack(&mut self) {
+        self.stack_top = 0;
+    }
+
+    fn runtime_error(&mut self, message: &str) {
+        let line = self.chunk.as_ref().unwrap().line_for_instruction_n(self.ip);
+        eprintln!("[line {}] Error: {}", line, message);
+        self.reset_stack();
     }
 }
 

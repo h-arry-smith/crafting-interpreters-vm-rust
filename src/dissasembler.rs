@@ -54,6 +54,27 @@ impl Dissasembler {
             Opcode::Multiply => {
                 Self::disassemble_simple_instruction("Multiply", f)?;
             }
+            Opcode::Nil => {
+                Self::disassemble_simple_instruction("Nil", f)?;
+            }
+            Opcode::True => {
+                Self::disassemble_simple_instruction("True", f)?;
+            }
+            Opcode::False => {
+                Self::disassemble_simple_instruction("False", f)?;
+            }
+            Opcode::Not => {
+                Self::disassemble_simple_instruction("Not", f)?;
+            }
+            Opcode::Equal => {
+                Self::disassemble_simple_instruction("Equal", f)?;
+            }
+            Opcode::Greater => {
+                Self::disassemble_simple_instruction("Greater", f)?;
+            }
+            Opcode::Less => {
+                Self::disassemble_simple_instruction("Less", f)?;
+            }
         }
 
         Ok(())

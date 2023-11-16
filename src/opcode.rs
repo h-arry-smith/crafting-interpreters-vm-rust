@@ -9,6 +9,13 @@ pub enum Opcode {
     Subtract,
     Divide,
     Multiply,
+    Nil,
+    True,
+    False,
+    Not,
+    Equal,
+    Greater,
+    Less,
 }
 
 impl From<u8> for Opcode {
@@ -22,6 +29,13 @@ impl From<u8> for Opcode {
             5 => Opcode::Subtract,
             6 => Opcode::Divide,
             7 => Opcode::Multiply,
+            8 => Opcode::Nil,
+            9 => Opcode::True,
+            10 => Opcode::False,
+            11 => Opcode::Not,
+            12 => Opcode::Equal,
+            13 => Opcode::Greater,
+            14 => Opcode::Less,
             _ => panic!("Unknown opcode {}", byte),
         }
     }

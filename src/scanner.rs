@@ -217,9 +217,8 @@ impl<'src> Scanner<'src> {
         rest: &str,
         token_type: TokenType,
     ) -> TokenType {
-        dbg!("heck_keyword");
-        if dbg!(self.current - self.start == start + length)
-            && dbg!(&self.source[self.start + start..self.start + start + length] == rest)
+        if self.current - self.start == start + length
+            && &self.source[self.start + start..self.start + start + length] == rest
         {
             token_type
         } else {

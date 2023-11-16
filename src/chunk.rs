@@ -46,6 +46,17 @@ impl Chunk {
         }
     }
 
+    pub fn line_for_instruction_n(&self, n: usize) -> usize {
+        let mut line = 0;
+        for (l, i) in &self.lines {
+            if n <= *i {
+                return line;
+            }
+            line = *l;
+        }
+        line
+    }
+
     pub fn add_constant(&mut self, value: Value) -> u32 {
         self.constants.push(value);
         (self.constants.len() - 1) as u32
