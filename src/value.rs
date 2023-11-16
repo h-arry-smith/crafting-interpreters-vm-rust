@@ -1,10 +1,11 @@
 use std::fmt::Display;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub enum Value {
     Number(f64),
     Bool(bool),
     Nil,
+    Obj(Obj),
 }
 
 impl Value {
@@ -49,6 +50,20 @@ impl Value {
             _ => false,
         }
     }
+
+    pub fn is_obj_type(&self, obj_type: ObjType) -> bool {
+        match self {
+            Value::Obj(obj) => obj.is_type(obj_type),
+            _ => false,
+        }
+    }
+
+    pub fn as_string(self) -> Option<String> {
+        match self {
+            Value::Obj(Obj::String(s)) => Some(s),
+            _ => None,
+        }
+    }
 }
 
 impl PartialEq for Value {
@@ -68,6 +83,25 @@ impl Display for Value {
             Value::Number(n) => write!(f, "{}", n),
             Value::Bool(b) => write!(f, "{}", b),
             Value::Nil => write!(f, "nil"),
+            Value::Obj(Obj::String(s)) => write!(f, "{}", s),
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Obj {
+    String(String),
+}
+
+impl Obj {
+    fn is_type(&self, obj_type: ObjType) -> bool {
+        match self {
+            Obj::String(_) => obj_type == ObjType::String,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ObjType {
+    String,
 }

@@ -1,7 +1,11 @@
 use std::{error::Error, fmt::Display};
 
 use crate::{
-    chunk::Chunk, compiler::Compiler, dissasembler::Dissasembler, opcode::Opcode, value::Value,
+    chunk::Chunk,
+    compiler::Compiler,
+    dissasembler::Dissasembler,
+    opcode::Opcode,
+    value::{Obj, ObjType, Value},
 };
 
 const STACK_MAX: usize = 256;
@@ -14,8 +18,8 @@ macro_rules! binary_op {
                 return Err(InterpretError::RuntimeError);
             }
 
-            let b = *$self.pop();
-            let a = *$self.pop();
+            let b = $self.pop();
+            let a = $self.pop();
             let result = Value::$value_type(a.as_f64().unwrap() $op b.as_f64().unwrap());
             $self.push(result);
         }
@@ -33,10 +37,11 @@ type InterpretResult = Result<(), InterpretError>;
 
 impl Vm {
     pub fn new() -> Self {
+        const value: Value = Value::Nil;
         Vm {
             chunk: None,
             ip: 0,
-            stack: [Value::Number(0.0); STACK_MAX],
+            stack: [value; STACK_MAX],
             stack_top: 0,
         }
     }
@@ -74,7 +79,7 @@ impl Vm {
                     return Ok(());
                 }
                 Opcode::Constant => {
-                    let constant = *self.read_constant()?;
+                    let constant = self.read_constant()?.clone();
                     self.push(constant);
                 }
                 Opcode::Nil => {
@@ -87,8 +92,8 @@ impl Vm {
                     self.push(Value::Bool(false));
                 }
                 Opcode::Equal => {
-                    let b = *self.pop();
-                    let a = *self.pop();
+                    let b = self.pop();
+                    let a = self.pop();
                     let result = Value::Bool(a == b);
                     self.push(result);
                 }
@@ -103,7 +108,21 @@ impl Vm {
                     let negated_value = Value::Number(-(self.pop().as_f64().unwrap()));
                     self.push(negated_value);
                 }
-                Opcode::Add => binary_op!(self, +, Number),
+                Opcode::Add => {
+                    if self.peek(0).is_obj_type(ObjType::String)
+                        && self.peek(1).is_obj_type(ObjType::String)
+                    {
+                        self.concatenate();
+                    } else if self.peek(0).is_number() && self.peek(1).is_number() {
+                        let a = self.pop();
+                        let b = self.pop();
+                        let result = Value::Number(a.as_f64().unwrap() + b.as_f64().unwrap());
+                        self.push(result);
+                    } else {
+                        self.runtime_error("Operands must be two numbers or two strings");
+                        return Err(InterpretError::RuntimeError);
+                    }
+                }
                 Opcode::Subtract => binary_op!(self, -, Number),
                 Opcode::Divide => binary_op!(self, /, Number),
                 Opcode::Multiply => binary_op!(self, *, Number),
@@ -118,6 +137,19 @@ impl Vm {
                 return Ok(());
             }
         }
+    }
+
+    fn concatenate(&mut self) {
+        let b = self.pop();
+        let a = self.pop();
+
+        let mut a = a.as_string().unwrap();
+        let b = b.as_string().unwrap();
+
+        a.push_str(&b);
+
+        let result = Value::Obj(Obj::String(a));
+        self.push(result);
     }
 
     fn read_opcode(&mut self) -> Result<Opcode, InterpretError> {
@@ -137,9 +169,9 @@ impl Vm {
         self.stack_top += 1;
     }
 
-    fn pop(&mut self) -> &Value {
+    fn pop(&mut self) -> Value {
         self.stack_top -= 1;
-        &self.stack[self.stack_top]
+        self.stack[self.stack_top].clone()
     }
 
     fn peek(&self, distance: usize) -> &Value {

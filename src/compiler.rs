@@ -2,7 +2,7 @@ use crate::{
     chunk::Chunk,
     opcode::Opcode,
     scanner::{CompilerError, Scanner, Token, TokenType},
-    value::Value,
+    value::{Obj, Value},
     vm::InterpretError,
 };
 
@@ -250,7 +250,7 @@ fn get_rule(token_type: TokenType) -> ParseRule {
               TokenType::Less => ParseRule { prefix: None, infix: Some(binary), precedence: Precedence::Comparison },
          TokenType::LessEqual => ParseRule { prefix: None, infix: Some(binary), precedence: Precedence::Comparison },
         TokenType::Identifier => ParseRule { prefix: None, infix: None, precedence: Precedence::None },
-            TokenType::String => ParseRule { prefix: None, infix: None, precedence: Precedence::None },
+            TokenType::String => ParseRule { prefix: Some(string), infix: None, precedence: Precedence::None },
             TokenType::Number => ParseRule { prefix: Some(number), infix: None, precedence: Precedence::None },
                TokenType::And => ParseRule { prefix: None, infix: None, precedence: Precedence::None },
              TokenType::Class => ParseRule { prefix: None, infix: None, precedence: Precedence::None },
@@ -338,4 +338,12 @@ fn literal(compiler: &mut Compiler) {
         TokenType::True => compiler.emit_bytes(Opcode::True),
         _ => unreachable!(),
     }
+}
+
+fn string(compiler: &mut Compiler) {
+    let value = compiler.parser.previous.lexeme(compiler.parser.source);
+    let value = value[1..value.len() - 1].to_string();
+    let constant = compiler.make_constant(Value::Obj(Obj::String(value)));
+
+    compiler.emit_constant(constant);
 }
